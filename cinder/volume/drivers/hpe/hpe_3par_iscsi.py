@@ -125,10 +125,11 @@ class HPE3PARISCSIDriver(hpebasedriver.HPE3PARDriverBase):
         4.0.2 - Handle force detach case. bug #1686745
         4.0.3 - Set proper backend on subsequent operation, after group
                 failover. bug #1773069
+        4.0.6 - Allow iSCSI support for Primera 4.2 onwards
 
     """
 
-    VERSION = "4.0.2"
+    VERSION = "4.0.6"
 
     # The name of the CI wiki page.
     CI_WIKI_NAME = "HPE_Storage_CI"
@@ -138,6 +139,21 @@ class HPE3PARISCSIDriver(hpebasedriver.HPE3PARDriverBase):
         self.protocol = 'iSCSI'
 
     def _do_setup(self, common):
+        client_obj = common.client
+        is_primera = client_obj.is_primera_array()
+        if is_primera:
+            api_version = client_obj.getWsApiVersion()
+            array_version = api_version['build']
+            LOG.debug("array version: %(version)s",
+                      {'version': array_version})
+            if array_version < 40200000:
+                err_msg = (_('The iSCSI driver is not supported for '
+                             'Primera %(version)s. It is supported '
+                             'for Primera 4.2 or higher versions.')
+                           % {'version': array_version})
+                LOG.error(err_msg)
+                raise NotImplementedError()
+
         self.iscsi_ips = {}
         common.client_login()
         try:
